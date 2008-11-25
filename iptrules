@@ -1,0 +1,87 @@
+#!/bin/bash
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+DIRPREFIX=\.
+
+# the DSLish functions {{{
+set_nat_policy()     { set_nat_policy_ary[${#set_nat_policy_ary[*]}]="--policy $@"; }
+set_filter_policy()  { set_filter_policy_ary[${#set_filter_policy_ary[*]}]="--policy $@"; }
+setup_nat_chain()    { setup_nat_chain_ary[${#setup_nat_chain_ary[*]}]="--new-chain $@"; }
+setup_filter_chain() { setup_filter_chain_ary[${#setup_filter_chain_ary[*]}]="--new-chain $@"; }
+prerouting()         { prerouting_ary[${#prerouting_ary[*]}]="--append PREROUTING $@"; }
+postrouting()        { postrouting_ary[${#postrouting_ary[*]}]="--append POSTROUTING $@"; }
+input()              { input_ary[${#input_ary[*]}]="--append INPUT $@"; }
+forward()            { forward_ary[${#forward_ary[*]}]="--append FORWARD $@"; }
+output()             { output_ary[${#output_ary[*]}]="--append OUTPUT $@"; }
+filter_chain()       { filter_chain_ary[${#filter_chain_ary[*]}]="--append $@"; }
+nat_chain()          { nat_chain_ary[${#nat_chain_ary[*]}]="--append $@"; } 
+iptables()           { iptables_ary[${#iptables_ary[*]}]="$@"; } #}}}
+
+concatenate_rules() {
+    OIFS=$IFS
+    IFS='
+'
+    echo "*nat"
+    echo "${set_nat_policy_ary[*]}"
+    echo "${setup_nat_chain_ary[*]}"
+    echo "${prerouting_ary[*]}"
+    echo "${postrouting_ary[*]}"
+    echo "${nat_chain_ary[*]}"
+    echo "COMMIT"
+    echo "*filter"
+    echo "${set_filter_policy_ary[*]}"
+    echo "${setup_filter_chain_ary[*]}"
+    echo "${input_ary[*]}"
+    echo "${forward_ary[*]}"
+    echo "${output_ary[*]}"
+    echo "${filter_chain_ary[*]}"
+    echo "COMMIT"
+    IFS=$OIFS
+}
+
+activate_ruleset() {
+  concatenate_rules | iptables-restore
+
+  for rule in "${iptables_ary[@]}"
+  do /sbin/iptables $rule
+  done
+}
+
+test_ruleset() {
+  concatenate_rules
+  concatenate_rules | iptables-restore -t && echo >&2 "iptables-restore     ok"
+  for rule in "${iptables_ary[@]}"
+  do echo >&2 untested rule \"iptables $rule\"
+  done
+}
+
+case $1 in
+  test)
+    if test "$2"
+    then ruleset=$2
+    else ruleset=$DIRPREFIX/ruleset
+    fi
+    . $ruleset &&
+      test_ruleset
+  ;;
+  start) 
+    . $DIRPREFIX/ruleset &&
+      activate_ruleset
+    echo >&2 `iptables-save|egrep -v '^#|^:|^\*|^COMMIT'|wc -l` rules loaded
+  ;;
+  stop)
+    /sbin/iptables --flush
+    /sbin/iptables --flush --table nat
+    /sbin/iptables --flush --table mangle
+    /sbin/iptables --delete-chain
+    /sbin/iptables --delete-chain --table nat 
+    /sbin/iptables --delete-chain --table mangle 
+    /sbin/iptables --policy INPUT ACCEPT
+    /sbin/iptables --policy OUTPUT ACCEPT
+  ;;
+  reload|restart)
+    $0 stop
+    $0 start
+  ;;
+  *) echo "usage: $0 [start|stop|restart|reload|test <filename>]"
+esac
