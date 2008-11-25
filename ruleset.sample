@@ -11,19 +11,18 @@ set_filter_policy FORWARD ACCEPT
 ext_if='eth0'
 
 setup_filter_chain lognreject
-setup_filter_chain ipsec-in
+setup_filter_chain ipsec-incoming
 
+input -p tcp --dport 22 -j ACCEPT
 input --src 77.37.20.229 --proto UDP --dport 694 -j ACCEPT
-input -p ICMP -j proto-icmp
 input -j lognreject
 
 forward --in-interface ipsec0 --jump ipsec-incoming
 forward --src 172.23.24.25 -j REJECT 
-forward --proto ICMP -j proto-icmp
 
 forward -i eth0 -s 1.1.1.1 -d 172.23.24.25 -j ACCEPT
 postrouting -o ipsec0 -s 1.1.1.1 -d 0/0 -j SNAT --to-source 2.2.2.2
 prerouting -i $ext_if -d 1.1.1.1/25 -s 0/0 -j DNAT --to-destination 3.3.3.3
 
 filter_chain ipsec-incoming -o $ext_if -d 172.30.75.190 -s 10.61.10.142 -p TCP
-filter_chain ipsec-in -j DROP
+filter_chain ipsec-incoming -j DROP
