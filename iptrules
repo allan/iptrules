@@ -55,21 +55,19 @@ test_ruleset() {
   done
 }
 
-case $1 in
-  test)
+case $1
+in test)
     if test "$2"
     then ruleset=$2
     else ruleset=$DIRPREFIX/ruleset
     fi
     . $ruleset &&
       test_ruleset
-  ;;
-  start) 
+;; start) 
     . $DIRPREFIX/ruleset &&
       activate_ruleset
     echo >&2 `iptables-save|egrep -v '^#|^:|^\*|^COMMIT'|wc -l` rules loaded
-  ;;
-  stop)
+;; stop)
     iptables --flush
     iptables --flush --table nat
     iptables --flush --table mangle
@@ -78,10 +76,8 @@ case $1 in
     iptables --delete-chain --table mangle 
     iptables --policy INPUT ACCEPT
     iptables --policy OUTPUT ACCEPT
-  ;;
-  reload|restart)
+;; reload|restart)
     $0 stop
     $0 start
-  ;;
-  *) echo "usage: $0 [start|stop|restart|reload|test <filename>]"
+;; *) echo "usage: $0 [start|stop|restart|reload|test <filename>]"
 esac
