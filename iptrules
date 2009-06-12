@@ -43,7 +43,7 @@ activate_ruleset() {
   concatenate_rules | iptables-restore
 
   for rule in "${iptables_ary[@]}"
-  do /sbin/iptables $rule
+  do iptables $rule
   done
 }
 
@@ -70,14 +70,14 @@ case $1 in
     echo >&2 `iptables-save|egrep -v '^#|^:|^\*|^COMMIT'|wc -l` rules loaded
   ;;
   stop)
-    /sbin/iptables --flush
-    /sbin/iptables --flush --table nat
-    /sbin/iptables --flush --table mangle
-    /sbin/iptables --delete-chain
-    /sbin/iptables --delete-chain --table nat 
-    /sbin/iptables --delete-chain --table mangle 
-    /sbin/iptables --policy INPUT ACCEPT
-    /sbin/iptables --policy OUTPUT ACCEPT
+    iptables --flush
+    iptables --flush --table nat
+    iptables --flush --table mangle
+    iptables --delete-chain
+    iptables --delete-chain --table nat 
+    iptables --delete-chain --table mangle 
+    iptables --policy INPUT ACCEPT
+    iptables --policy OUTPUT ACCEPT
   ;;
   reload|restart)
     $0 stop
